@@ -450,7 +450,7 @@ if (!function_exists('proMcpListTodos')) {
         }
 
         $whereClause = implode(' AND ', $where);
-        $stmt = db()->prepare("SELECT id, title, description, due_date, priority, status, completed_at, created_at FROM todos WHERE {$whereClause} ORDER BY status != 'completed', COALESCE(due_date, '9999-12-31') ASC, FIELD(priority, 'high', 'medium', 'low')");
+        $stmt = db()->prepare("SELECT id, title, description, due_date, priority, status, completed_at, created_at FROM todos WHERE {$whereClause} ORDER BY status != 'completed', COALESCE(due_date, '9999-12-31') ASC, CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END");
         $stmt->execute($params);
         $todos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

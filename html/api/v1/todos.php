@@ -50,7 +50,7 @@ if ($method === 'GET') {
     $sortDir = strtoupper(api_query('sort_dir', 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
 
     $orderClause = match ($sortBy) {
-        'priority'   => "FIELD(priority, 'high', 'medium', 'low') {$sortDir}",
+        'priority'   => "CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END {$sortDir}",
         'created_at' => "created_at {$sortDir}",
         'title'      => "title {$sortDir}",
         default      => "COALESCE(due_date, '9999-12-31') {$sortDir}",

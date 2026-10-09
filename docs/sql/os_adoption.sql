@@ -58,7 +58,9 @@ CREATE TABLE IF NOT EXISTS directory_sync_state (
 INSERT INTO directory_sync_state (id) VALUES (1) ON CONFLICT DO NOTHING;
 
 -- The roles the application publishes to the kernel (app_roles on /api/mcp/kernel.php) and the rights each gives —
--- in the application's own words, matching what its guards already allow (requireAdmin, requireManager, requireAuth).
+-- in the application's own words, matching what its guards already allow: requireAuth (the dashboard, to-dos, the
+-- message logs), requireManager (the calendar, clients, services, availability, time off, reports), requireAdmin (settings,
+-- integrations, keys, staff).
 CREATE TABLE IF NOT EXISTS app_rights (
     right_key    text PRIMARY KEY,
     description  text NOT NULL,
@@ -73,17 +75,18 @@ CREATE TABLE IF NOT EXISTS app_roles (
     rights       text[] NOT NULL,
     sort_order   integer NOT NULL
 );
+DELETE FROM app_rights WHERE right_key NOT IN ('desk.view', 'appointments.manage', 'business.admin');
 INSERT INTO app_rights (right_key, description, sort_order) VALUES
-    ('appointments.work', 'See the calendar; make, change, confirm, complete and cancel appointments; look up clients, messages and calls; keep the to-do list', 1),
-    ('business.setup',    'Set up the business: services, availability, time off, clients'' details, reports', 2),
-    ('business.admin',    'Everything in the business, including its settings, booking page, integrations, API and agent keys', 3)
+    ('desk.view',           'See the dashboard and today''s appointments, keep the to-do list, read the SMS, voice-call and email logs', 1),
+    ('appointments.manage', 'The calendar: make, change, confirm, complete and cancel appointments; clients; services; availability and time off; reports', 2),
+    ('business.admin',      'Settings and the booking page, notifications, integrations, voice prompts, API and agent keys, staff', 3)
 ON CONFLICT (right_key) DO UPDATE SET description = EXCLUDED.description, sort_order = EXCLUDED.sort_order;
 INSERT INTO app_roles (role_key, name, description, capability, is_admin, rights, sort_order) VALUES
-    ('admin',   'Business admin', 'Runs the business in Pro Appointments: all setup, settings, integrations and keys.', 'admin', true,
-        ARRAY['appointments.work', 'business.setup', 'business.admin'], 1),
-    ('manager', 'Manager', 'Runs the day and the business''s setup: services, availability, time off, clients, reports.', 'write', false,
-        ARRAY['appointments.work', 'business.setup'], 2),
-    ('user',    'Staff', 'Works the calendar: appointments, clients and messages.', 'write', false,
-        ARRAY['appointments.work'], 3)
+    ('admin',   'Business admin', 'Runs the business in Pro Appointments: everything, settings, integrations and keys included.', 'admin', true,
+        ARRAY['desk.view', 'appointments.manage', 'business.admin'], 1),
+    ('manager', 'Manager', 'Runs the day and the business''s setup: appointments, clients, services, availability, time off, reports.', 'write', false,
+        ARRAY['desk.view', 'appointments.manage'], 2),
+    ('user',    'Staff', 'Sees the dashboard, keeps the to-do list and reads the message logs.', 'write', false,
+        ARRAY['desk.view'], 3)
 ON CONFLICT (role_key) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, capability = EXCLUDED.capability,
     is_admin = EXCLUDED.is_admin, rights = EXCLUDED.rights, sort_order = EXCLUDED.sort_order;
