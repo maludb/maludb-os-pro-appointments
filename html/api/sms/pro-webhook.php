@@ -5,6 +5,7 @@
  * Called by the SMS agent to fetch company info, client info, and
  * conversation history — mirroring /api/retell/pro-webhook.php for voice.
  *
+ * Auth: Authorization: Bearer <the business's mcp_api_key>.
  * Expects POST with: to_number, from_number
  * Returns JSON with: business, client, sms_history
  */
@@ -64,6 +65,15 @@ foreach ($rpnStmt->fetchAll() as $rpn) {
 if (!$restaurantId) {
     wlog("ERROR: No company found for number {$toNumber}");
     echo json_encode(['error' => 'No company found for this number']);
+    exit;
+}
+
+// Only the SMS agent, which holds this business's MCP key (Settings → Integrations) as its Bearer token:
+// the answer names a client and carries their messages.
+require_once __DIR__ . '/../../../helpers/api-auth.php';
+if (mcp_business_for_request() !== $restaurantId) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
 
