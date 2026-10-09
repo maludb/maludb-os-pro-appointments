@@ -11,7 +11,8 @@
  * Identifies client by from_number (professional_clients).
  * Logs inbound and outbound messages to sms_message_log.
  *
- * Twilio webhook URL: https://yourdomain.com/api/sms/webhook.php
+ * Twilio webhook URL: <APP_URL>/api/sms/webhook.php — requests must carry the X-Twilio-Signature of the
+ * business's own Twilio account (its auth token is the business's sms_api_secret).
  * HTTP Method: POST
  */
 
@@ -124,6 +125,8 @@ if (!$restaurantId) {
 }
 
 webhookLog("RESTAURANT: {$restaurantId} | TYPE: {$locationType}");
+
+twilioRequireSignature($restaurantId);
 
 // --- Identify client by from_number ---
 $clientId = null;

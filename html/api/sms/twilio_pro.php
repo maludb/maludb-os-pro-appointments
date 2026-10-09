@@ -6,12 +6,14 @@
  * restaurant_phone_numbers and the client from professional_clients,
  * then stores the message in sms_message_log.
  *
- * Twilio webhook URL: https://yourdomain.com/api/sms/twilio_pro.php
+ * Twilio webhook URL: <APP_URL>/api/sms/twilio_pro.php — requests must carry the X-Twilio-Signature of the
+ * business's own Twilio account (its auth token is the business's sms_api_secret).
  * HTTP Method: POST
  */
 
 require_once __DIR__ . '/../../../helpers/db.php';
 require_once __DIR__ . '/../../../helpers/restaurant.php';
+require_once __DIR__ . '/../../../helpers/twilio.php';
 
 // --- Logging ---
 define('SMS_PRO_LOG', __DIR__ . '/../../../logs/pro-webhook.log');
@@ -74,6 +76,8 @@ if (!$restaurantId) {
     echo '<Response></Response>';
     exit;
 }
+
+twilioRequireSignature($restaurantId);
 
 // --- Identify client by FROM number via professional_clients ---
 $clientId = null;
