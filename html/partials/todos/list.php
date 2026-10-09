@@ -28,9 +28,9 @@ $whereClause = implode(' AND ', $where);
 
 // Sort
 $orderClause = match ($sortBy) {
-    'priority' => "FIELD(priority, 'high', 'medium', 'low'), COALESCE(due_date, '9999-12-31') ASC",
+    'priority' => "CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END, COALESCE(due_date, '9999-12-31') ASC",
     'created' => "created_at DESC",
-    default => "COALESCE(due_date, '9999-12-31') ASC, FIELD(priority, 'high', 'medium', 'low')",
+    default => "COALESCE(due_date, '9999-12-31') ASC, CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END",
 };
 
 // Counts for tabs
