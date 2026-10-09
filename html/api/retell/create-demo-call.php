@@ -4,7 +4,7 @@
  *
  * Creates a web call for the demo/call pages.
  * Auto-populates restaurant info as dynamic variables.
- * Uses the Retell API key from the first restaurant's settings.
+ * Uses the server-wide Retell key (RETELL_DEFAULT_API_KEY).
  */
 
 require_once __DIR__ . '/../../../helpers/db.php';
@@ -39,7 +39,7 @@ if (empty($agentId) || !preg_match('/^agent_[a-zA-Z0-9]+$/', $agentId)) {
     exit;
 }
 
-$apiKey = getRetellApiKey();
+$apiKey = getRetellApiKey(0);
 if (empty($apiKey)) {
     dclog("NO API KEY");
     http_response_code(400);

@@ -2,42 +2,105 @@
 /**
  * Retell AI Request Authentication
  *
- * Verifies X-Retell-Signature header using HMAC SHA-256.
- * API key stored in settings table as 'retell_api_key'.
+ * Verifies the X-Retell-Signature header (HMAC SHA-256 keyed with the Retell API key that owns the agent).
+ * Each business's key is its own ('retell_api_key' in settings); a business without one uses the
+ * server-wide RETELL_DEFAULT_API_KEY — never another business's.
  */
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/availability.php'; // getRestaurantSetting
+require_once __DIR__ . '/restaurant.php';   // getRestaurantByPhone
+require_once __DIR__ . '/../config/app.php';
 
 /**
  * Verify the Retell signature on an incoming request.
- * Retell signs the raw request body with HMAC SHA-256 using the API key.
- *
- * @param string $rawBody Raw request body
- * @param string $signature Value of X-Retell-Signature header
- * @param string $apiKey The Retell API key
- * @return bool
+ * Retell sends "v=<unix ms>,d=<hex>" where d = HMAC-SHA256(raw body . timestamp) keyed with the API key,
+ * and the timestamp must be within five minutes (the scheme of Retell's own SDKs).
  */
 function verifyRetellSignature(string $rawBody, string $signature, string $apiKey): bool
 {
-    if ($signature === '' || $apiKey === '') {
+    if ($apiKey === '' || !preg_match('/^v=(\d+),d=([0-9a-f]+)$/', $signature, $m)) {
         return false;
     }
-    $expected = hash_hmac('sha256', $rawBody, $apiKey);
-    return hash_equals($expected, $signature);
+    if (abs((int)(microtime(true) * 1000) - (int)$m[1]) > 5 * 60 * 1000) {
+        return false;
+    }
+    return hash_equals(hash_hmac('sha256', $rawBody . $m[1], $apiKey), $m[2]);
 }
 
 /**
- * Get the Retell API key.
- * Priority: restaurant-specific override → global setting → hardcoded default.
+ * The business a Retell request is about: the restaurant_slug argument of a custom function, else the agent
+ * (call.agent_id, or ?id= on the webhook URL) through restaurant_prompts, else the number called.
+ */
+function retellRequestRestaurantId(array $data): ?int
+{
+    $slug = (string)($data['args']['restaurant_slug'] ?? '');
+    if ($slug !== '') {
+        $stmt = db()->prepare("SELECT id FROM restaurants WHERE slug = ?");
+        $stmt->execute([$slug]);
+        $id = $stmt->fetchColumn();
+        if ($id) return (int)$id;
+    }
+    $call = $data['call'] ?? $data['call_inbound'] ?? $data;
+    $agentId = (string)($call['agent_id'] ?? $_GET['id'] ?? '');
+    if ($agentId !== '') {
+        $stmt = db()->prepare("SELECT restaurant_id FROM restaurant_prompts WHERE agent_id = ? LIMIT 1");
+        $stmt->execute([$agentId]);
+        $id = $stmt->fetchColumn();
+        if ($id) return (int)$id;
+    }
+    $to = (string)($call['to_number'] ?? '');
+    if ($to !== '') {
+        $r = getRestaurantByPhone($to);
+        if ($r) return (int)$r['id'];
+    }
+    return null;
+}
+
+/**
+ * Stop with 401 unless the request carries a valid Retell signature, made with the key of the business
+ * it is about (or the server-wide key). Every endpoint Retell calls goes through here.
+ */
+function requireRetellSignature(string $rawBody, array $data): void
+{
+    $signature = $_SERVER['HTTP_X_RETELL_SIGNATURE'] ?? '';
+    $keys = array_unique(array_filter([
+        getRetellApiKey(retellRequestRestaurantId($data) ?? 0),
+        (string)app_config('RETELL_DEFAULT_API_KEY', ''),
+    ]));
+    foreach ($keys as $key) {
+        if (verifyRetellSignature($rawBody, $signature, $key)) return;
+    }
+    http_response_code(401);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
+}
+
+/** Choose (with an id) or read (without) the business whose key the Retell API helpers use. */
+function retellUseRestaurant(?int $restaurantId = null): ?int
+{
+    static $current = null;
+    if ($restaurantId !== null) $current = $restaurantId;
+    return $current;
+}
+
+/**
+ * Get the Retell API key: the business's own key, else the server-wide RETELL_DEFAULT_API_KEY.
+ * With no business given, the one chosen by retellUseRestaurant(), else the signed-in session's current
+ * business, else only the server-wide key. Another business's key is never used.
  *
- * @param int|null $restaurantId Check for a restaurant-specific key first
+ * @param int|null $restaurantId The business the call is for (0 = the server-wide key only)
  */
 function getRetellApiKey(?int $restaurantId = null): string
 {
     $pdo = db();
+    $restaurantId ??= retellUseRestaurant();
+    if ($restaurantId === null && session_status() === PHP_SESSION_ACTIVE) {
+        $restaurantId = (int)($_SESSION['current_restaurant_id'] ?? 0) ?: null;
+    }
 
-    // 1. Check for restaurant-specific override
+    // 1. The business's own key
     if ($restaurantId !== null && $restaurantId > 0) {
         $stmt = $pdo->prepare(
             "SELECT setting_value FROM settings WHERE setting_key = 'retell_api_key' AND restaurant_id = ? AND setting_value != '' LIMIT 1"
@@ -49,18 +112,7 @@ function getRetellApiKey(?int $restaurantId = null): string
         }
     }
 
-    // 2. Check for a global key in settings
-    $stmt = $pdo->prepare(
-        "SELECT setting_value FROM settings WHERE setting_key = 'retell_api_key' AND setting_value != '' ORDER BY restaurant_id ASC LIMIT 1"
-    );
-    $stmt->execute();
-    $row = $stmt->fetch();
-    if ($row) {
-        return $row['setting_value'];
-    }
-
-    // 3. Server-wide default (the environment, config/.env or config/local.php)
-    require_once __DIR__ . '/../config/app.php';
+    // 2. Server-wide default (the environment, config/.env or config/local.php)
     return (string)app_config('RETELL_DEFAULT_API_KEY', '');
 }
 
@@ -78,7 +130,7 @@ function parseRetellRequest(): array
 
     // Read raw body
     $rawBody = file_get_contents('php://input');
-    file_put_contents($logFile, "[{$ts}] RAW BODY: " . ($rawBody ?: '(empty)') . "\n", FILE_APPEND);
+    file_put_contents($logFile, "[{$ts}] BODY: " . strlen((string)$rawBody) . " bytes\n", FILE_APPEND);
 
     if ($rawBody === false || $rawBody === '') {
         file_put_contents($logFile, "[{$ts}] ERROR: Empty body\n\n", FILE_APPEND);
@@ -87,19 +139,6 @@ function parseRetellRequest(): array
         exit;
     }
 
-    // Verify signature
-    $signature = $_SERVER['HTTP_X_RETELL_SIGNATURE'] ?? '';
-    $apiKey = getRetellApiKey();
-
-    // Auth temporarily disabled for debugging
-    // if ($apiKey !== '' && $signature !== '') {
-    //     if (!verifyRetellSignature($rawBody, $signature, $apiKey)) {
-    //         http_response_code(401);
-    //         echo json_encode(['error' => 'Invalid signature']);
-    //         exit;
-    //     }
-    // }
-
     // Parse JSON
     $data = json_decode($rawBody, true);
     if (!is_array($data)) {
@@ -107,6 +146,8 @@ function parseRetellRequest(): array
         echo json_encode(['error' => 'Invalid JSON']);
         exit;
     }
+
+    requireRetellSignature($rawBody, $data);
 
     return $data;
 }
@@ -128,7 +169,7 @@ function retellResponse(array $data): void
 {
     $logFile = __DIR__ . '/../logs/retell-custom-functions.log';
     $ts = date('Y-m-d H:i:s');
-    file_put_contents($logFile, "[{$ts}] RESPONSE: " . json_encode($data, JSON_PRETTY_PRINT) . "\n\n", FILE_APPEND);
+    file_put_contents($logFile, "[{$ts}] RESPONSE: success=" . json_encode($data['success'] ?? null) . "\n\n", FILE_APPEND);
 
     header('Content-Type: application/json');
     echo json_encode($data);
