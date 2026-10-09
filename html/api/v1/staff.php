@@ -22,6 +22,9 @@ $auth   = api_authenticate();
 $rid    = $auth['restaurant_id'];
 $method = api_method();
 api_require_role($auth, 'admin');
+if (os_enabled() && $method !== 'GET') {
+    api_error(OS_MANAGED . ' People and their roles here are granted there.', 'MANAGED_BY_OS', 403);
+}
 
 if ($method === 'GET') {
     $stmt = db()->prepare(

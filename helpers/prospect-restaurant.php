@@ -7,6 +7,8 @@ require_once __DIR__ . '/db.php';
 
 function createRestaurantFromProspect(array $prospect, int $affiliateUserId): ?int
 {
+    require_once __DIR__ . '/os.php';
+    if (os_enabled()) throw new RuntimeException(OS_MANAGED . ' Businesses are created there.');
     $pdo = db();
 
     // Skip if prospect already has a restaurant

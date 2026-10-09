@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../helpers/csrf.php';
 require_once __DIR__ . '/../../../helpers/db.php';
 
 requireAuth();
+os_refuse_if_managed('setup-prospect-company-os-managed');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

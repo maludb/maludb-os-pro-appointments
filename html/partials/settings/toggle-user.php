@@ -4,6 +4,7 @@ require_once '../../../helpers/csrf.php';
 
 requireAuth();
 requireAdmin();
+os_refuse_if_managed('toggle-user-os-managed');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

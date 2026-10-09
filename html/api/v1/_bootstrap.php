@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../../../helpers/db.php';
 require_once __DIR__ . '/../../../helpers/restaurant.php';
 require_once __DIR__ . '/../../../helpers/api-auth.php';
+require_once __DIR__ . '/../../../helpers/os.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -87,6 +88,9 @@ function api_authenticate(): array {
         api_error('Missing or invalid Authorization header.', 'AUTH_REQUIRED', 401);
     }
 
+    // Under the operating system a key works only for a user linked to the kernel, in a business the kernel
+    // still grants them — so a deactivation or revocation there ends the key here.
+    $os = os_enabled();
     $pdo = db();
     $stmt = $pdo->prepare(
         "SELECT t.id AS token_id, t.user_id, t.restaurant_id, t.expires_at, t.last_used_at,
@@ -94,8 +98,10 @@ function api_authenticate(): array {
                 ur.role AS restaurant_role
          FROM api_tokens t
          JOIN users u ON u.id = t.user_id
-         JOIN user_restaurants ur ON ur.user_id = t.user_id AND ur.restaurant_id = t.restaurant_id AND ur.is_active = 1
-         WHERE t.token_hash = ? AND t.expires_at > NOW()
+         JOIN user_restaurants ur ON ur.user_id = t.user_id AND ur.restaurant_id = t.restaurant_id AND ur.is_active = 1"
+        . ($os ? " AND ur.source = 'os' AND EXISTS (SELECT 1 FROM restaurants r WHERE r.id = ur.restaurant_id AND r.is_active = 1 AND r.os_scope_id IS NOT NULL)" : "") . "
+         WHERE t.token_hash = ? AND t.expires_at > NOW()"
+        . ($os ? " AND u.os_member_id IS NOT NULL" : "") . "
          LIMIT 1"
     );
     $stmt->execute([hash('sha256', $token)]);

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../helpers/csrf.php';
 require_once __DIR__ . '/../../../helpers/db.php';
 
 requireAuth();
+if (os_enabled()) { echo os_managed_notice('edit-client-user-form-os-managed'); exit; }
 
 $pdo = db();
 $userId = currentUserId();

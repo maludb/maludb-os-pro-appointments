@@ -19,6 +19,7 @@
 require_once __DIR__ . '/session.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/restaurant.php';
+require_once __DIR__ . '/os.php';
 
 /**
  * Check if user is authenticated
@@ -125,6 +126,9 @@ function login_user($user, $remember = false) {
  */
 function logout_user() {
     session_start_once();
+    if (os_enabled() && session_id() !== '') {
+        os_session_end(session_id(), 'member');
+    }
     if (isset($_COOKIE['remember_token'])) {
         setcookie('remember_token', '', time() - 3600, '/');
     }
@@ -142,8 +146,9 @@ function switchRestaurant($restaurantId) {
     $restaurant = getRestaurant($restaurantId);
     if (!$restaurant) return false;
 
-    // Super-admins can switch to any restaurant with admin-level access
-    if (isSuperAdmin()) {
+    // Super-admins can switch to any restaurant with admin-level access (standalone only: under the operating
+    // system a super-admin holds the admin role in every business through the kernel, like anyone else)
+    if (isSuperAdmin() && !os_enabled()) {
         $_SESSION['current_restaurant_id'] = (int)$restaurantId;
         $_SESSION['current_role'] = 'admin';
         $_SESSION['current_restaurant_name'] = $restaurant['name'];
@@ -167,6 +172,9 @@ function session_start_once(): void {
 
 function requireAuth(): void {
     session_start_once();
+    if (os_enabled()) {
+        os_guard();
+    }
     if (empty($_SESSION['user'])) {
         if (isset($_SERVER['HTTP_HX_REQUEST'])) {
             http_response_code(401);

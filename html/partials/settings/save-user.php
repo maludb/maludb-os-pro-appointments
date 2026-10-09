@@ -6,6 +6,7 @@ require_once '../../../helpers/invitations.php';
 
 requireAuth();
 requireAdmin();
+os_refuse_if_managed('save-user-os-managed');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

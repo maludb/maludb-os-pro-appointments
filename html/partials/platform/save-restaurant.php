@@ -3,6 +3,7 @@ require_once '../../../helpers/auth.php';
 require_once '../../../helpers/csrf.php';
 
 requireSuperAdmin();
+os_refuse_if_managed('save-restaurant-os-managed');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

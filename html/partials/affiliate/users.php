@@ -90,12 +90,14 @@ $roleColors = ['admin' => 'danger', 'manager' => 'warning', 'user' => 'info', 'o
             </div>
             <div class="d-flex align-items-center gap-2" id="aff-users-company-actions-<?php echo $rid; ?>">
                 <?php if (!empty($company['prospect_id'])): ?>
+                <?php if (!os_enabled()): ?>
                 <button class="btn btn-sm btn-outline-primary"
                         hx-get="/partials/affiliate/invite-client-user-form.php?prospect_id=<?php echo $company['prospect_id']; ?>"
                         hx-target="#modal-container"
                         id="aff-users-invite-btn-<?php echo $rid; ?>">
                     <i class="feather-user-plus me-1"></i> Invite User
                 </button>
+                <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -161,6 +163,7 @@ $roleColors = ['admin' => 'danger', 'manager' => 'warning', 'user' => 'info', 'o
                             </td>
                             <td class="text-end" id="aff-users-actions-<?php echo (int)$u['ur_id']; ?>">
                                 <div class="d-flex justify-content-end gap-1" id="aff-users-action-btns-<?php echo (int)$u['ur_id']; ?>">
+                                <?php if (!os_enabled()): ?>
                                     <button class="btn btn-sm btn-outline-primary border-0 p-0 px-1"
                                             hx-get="/partials/affiliate/edit-client-user-form.php?ur_id=<?php echo (int)$u['ur_id']; ?>"
                                             hx-target="#modal-container"
@@ -179,6 +182,7 @@ $roleColors = ['admin' => 'danger', 'manager' => 'warning', 'user' => 'info', 'o
                                         <i class="feather-x-circle" style="font-size:14px;"></i>
                                     </button>
                                     <?php endif; ?>
+                                <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
