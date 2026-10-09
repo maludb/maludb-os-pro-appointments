@@ -1,0 +1,8 @@
+vendor/
+composer
+composer.phar
+config/.env
+config/local.php
+logs/*
+!logs/.gitkeep
+*.swp

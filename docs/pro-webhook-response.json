@@ -1,0 +1,80 @@
+{
+  "_description": "JSON structure returned by api/retell/pro-webhook.php for call_inbound events",
+
+  "call_inbound": {
+    "dynamic_variables": {
+
+      "_section": "Business info (always present)",
+      "business_name": "string — restaurant/business name",
+      "business_slug": "string — URL slug",
+      "business_phone": "string — business phone number",
+
+      "_section_time": "Date/time helpers (always present)",
+      "time": "string — current time, e.g. '2:30 PM'",
+      "today": "string — today's date, e.g. '2026-03-17'",
+      "tomorrow": "string — tomorrow's date",
+      "dow": "string — day of week, e.g. 'Monday'",
+      "monday": "string — date of this/next Monday (YYYY-MM-DD)",
+      "tuesday": "string — date of this/next Tuesday",
+      "wednesday": "string — date of this/next Wednesday",
+      "thursday": "string — date of this/next Thursday",
+      "friday": "string — date of this/next Friday",
+      "saturday": "string — date of this/next Saturday",
+      "sunday": "string — date of this/next Sunday",
+
+      "_section_caller": "Caller identification (always present)",
+      "caller_known": "string — 'true' if caller matched a client, 'false' otherwise",
+      "client_phone": "string — caller phone in E.164 format (always set when from_number is present)",
+
+      "_section_client": "Client details (only when caller_known = 'true')",
+      "client_name": "string — full name (first + last)",
+      "client_first_name": "string",
+      "client_last_name": "string",
+      "client_email": "string",
+      "client_notes": "string — client-facing notes",
+      "client_service_address": "string — combined address: '123 Main St, Chicago, IL 60601'",
+      "client_service_address_line1": "string",
+      "client_service_city": "string",
+      "client_service_state": "string",
+      "client_service_postal_code": "string",
+      "client_last_service_date": "string — date (YYYY-MM-DD) or empty",
+      "client_preferred_contact_method": "string — '', 'email', 'phone', or 'sms'",
+      "client_last_appointment_date": "string — date (YYYY-MM-DD) or empty",
+
+      "_section_appointment": "Next appointment (only when caller_known = 'true')",
+      "has_appointment": "string — 'true' if upcoming appointment exists, 'false' otherwise",
+      "appointment_date": "string — date (YYYY-MM-DD)",
+      "appointment_start_at": "string — time, e.g. '2:30 PM'",
+      "appointment_service_name": "string — name of the service booked",
+      "appointment_price": "string — decimal price, e.g. '150.00'",
+      "appointment_confirmation_code": "string — unique confirmation code",
+      "appointment_client_notes": "string — notes visible to the client",
+      "appointment_service_contact_name": "string — service contact person",
+      "appointment_service_contact_phone": "string — service contact phone",
+      "appointment_service_contact_method": "string — contact method (up to 3 chars)",
+      "appointment_service_address_1": "string — service location address",
+      "appointment_service_city": "string",
+      "appointment_service_state": "string",
+      "appointment_service_postal_code": "string",
+
+      "_section_settings": "Custom prompt settings (included if configured in settings table)",
+      "voice_agent_greeting": "string — custom greeting text (optional)",
+      "voice_agent_specials": "string — specials/promotions text (optional)",
+      "voice_agent_custom_info": "string — additional custom info (optional)",
+
+      "_section_agent": "Agent-specific overrides (included if matched in restaurant_prompts)",
+      "agent_phone_number": "string — agent's assigned phone number (optional)",
+      "agent_description": "string — agent description (optional)",
+      "_dynamic_prompt_details": "Additional key/value pairs from restaurant_prompt_details (optional)"
+    },
+
+    "metadata": {
+      "business_id": "string — restaurant ID",
+      "source": "string — always 'phone'",
+      "from_number": "string — caller's phone number",
+      "to_number": "string — called phone number",
+      "client_id": "string — matched client ID (only when caller_known = 'true')",
+      "agent_id": "string — matched agent ID (only when agent prompt found)"
+    }
+  }
+}

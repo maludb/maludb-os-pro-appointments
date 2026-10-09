@@ -1,0 +1,401 @@
+<?php
+require_once __DIR__ . '/../../../helpers/auth.php';
+require_once __DIR__ . '/../../../helpers/ui.php';
+require_once __DIR__ . '/../../../helpers/date.php';
+require_once __DIR__ . '/../../../models/Task.php';
+
+check_auth();
+$user = get_user();
+
+// Get current team ID
+$teamId = $_SESSION['selected_team_id'] ?? null;
+
+// Redirect if no team selected
+if (!$teamId) {
+    echo '<div class="alert alert-warning">Please select a team to view team tasks.</div>';
+    exit;
+}
+
+// Get parameters
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$perPage = isset($_GET['per_page']) ? intval($_GET['per_page']) : 20;
+
+// Validate per page (only allow specific values)
+$validPerPage = [10, 20, 50, 100];
+if (!in_array($perPage, $validPerPage)) {
+    $perPage = 20;
+}
+
+// Get filters (no team_id needed - using searchTeamTasks instead)
+$filters = [
+    'query' => $_GET['q'] ?? '',
+    'status' => $_GET['status'] ?? '',
+    'priority' => $_GET['priority'] ?? '',
+    'assignee' => $_GET['assignee'] ?? '',
+    'date_from' => $_GET['date_from'] ?? '',
+    'date_to' => $_GET['date_to'] ?? ''
+];
+
+// Get sort parameters
+$sort = [
+    'column' => $_GET['sort'] ?? 'created_at',
+    'direction' => $_GET['dir'] ?? 'DESC'
+];
+
+// Get team tasks (all tasks created by or assigned to team members)
+$taskModel = new Task();
+$result = $taskModel->searchTeamTasks($teamId, $filters, $sort, $page, $perPage);
+
+$tasks = $result['tasks'];
+$total = $result['total'];
+$totalPages = $result['totalPages'];
+
+// Build query string for pagination
+$queryParams = [];
+if (!empty($filters['query'])) $queryParams['q'] = $filters['query'];
+if (!empty($filters['status'])) $queryParams['status'] = $filters['status'];
+if (!empty($filters['priority'])) $queryParams['priority'] = $filters['priority'];
+if (!empty($filters['assignee'])) $queryParams['assignee'] = $filters['assignee'];
+if (!empty($filters['date_from'])) $queryParams['date_from'] = $filters['date_from'];
+if (!empty($filters['date_to'])) $queryParams['date_to'] = $filters['date_to'];
+if (!empty($sort['column'])) $queryParams['sort'] = $sort['column'];
+if (!empty($sort['direction'])) $queryParams['dir'] = $sort['direction'];
+if ($perPage != 20) $queryParams['per_page'] = $perPage;
+
+$queryString = !empty($queryParams) ? '&' . http_build_query($queryParams) : '';
+
+// Function to build sort URL
+function getSortUrl($column, $currentSort, $queryString) {
+    $direction = 'ASC';
+    $icon = 'bi-arrow-down-up';
+
+    if ($currentSort['column'] === $column) {
+        $direction = $currentSort['direction'] === 'ASC' ? 'DESC' : 'ASC';
+        $icon = $currentSort['direction'] === 'ASC' ? 'bi-arrow-up' : 'bi-arrow-down';
+    }
+
+    return [
+        'url' => "sort={$column}&dir={$direction}" . str_replace("&sort={$currentSort['column']}&dir={$currentSort['direction']}", '', $queryString),
+        'icon' => $icon
+    ];
+}
+?>
+
+<!-- Results Summary -->
+<div class="d-flex justify-content-between align-items-center mb-3" id="team-tasks-table-summary">
+    <div>
+        <span class="text-muted">
+            Showing <strong><?= count($tasks) ?></strong> of <strong><?= $total ?></strong> team task(s)
+            <?php if ($page > 1): ?>
+                (Page <?= $page ?> of <?= $totalPages ?>)
+            <?php endif; ?>
+        </span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <label for="team-tasks-per-page-select" class="text-muted small mb-0">Items per page:</label>
+        <select id="team-tasks-per-page-select"
+                class="form-select form-select-sm"
+                style="width: auto;"
+                name="per_page"
+                hx-get="/partials/tasks/team-tasks-table.php"
+                hx-trigger="change"
+                hx-target="#team-tasks-list-table"
+                hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+            <option value="10" <?= $perPage == 10 ? 'selected' : '' ?>>10</option>
+            <option value="20" <?= $perPage == 20 ? 'selected' : '' ?>>20</option>
+            <option value="50" <?= $perPage == 50 ? 'selected' : '' ?>>50</option>
+            <option value="100" <?= $perPage == 100 ? 'selected' : '' ?>>100</option>
+        </select>
+    </div>
+</div>
+
+<!-- Tasks Table -->
+<?php if (empty($tasks)): ?>
+    <!-- Empty State -->
+    <div class="text-center py-5" id="team-tasks-empty-state">
+        <i class="feather-inbox fs-1 text-muted mb-3 d-block"></i>
+        <h5 class="text-muted">No team tasks found</h5>
+        <p class="text-muted">
+            <?php if (array_filter($filters)): ?>
+                Try adjusting your search or filters to find what you're looking for.
+            <?php else: ?>
+                Get started by creating a team task!
+            <?php endif; ?>
+        </p>
+        <button class="btn btn-primary mt-3" id="btn-create-first-team-task">
+            <i class="feather-plus-lg me-2"></i>Create Team Task
+        </button>
+    </div>
+<?php else: ?>
+    <div class="table-responsive" id="team-tasks-table-container">
+        <table class="table table-hover align-middle" id="team-tasks-table">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">
+                        <?php $sortData = getSortUrl('priority', $sort, $queryString); ?>
+                        <a href="#"
+                           class="text-decoration-none text-dark"
+                           hx-get="/partials/tasks/team-tasks-table.php?<?= $sortData['url'] ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            <i class="bi <?= $sortData['icon'] ?>"></i>
+                        </a>
+                    </th>
+                    <th>
+                        <?php $sortData = getSortUrl('title', $sort, $queryString); ?>
+                        <a href="#"
+                           class="text-decoration-none text-dark"
+                           hx-get="/partials/tasks/team-tasks-table.php?<?= $sortData['url'] ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            Title <i class="bi <?= $sortData['icon'] ?> small"></i>
+                        </a>
+                    </th>
+                    <th style="width: 120px;">
+                        <?php $sortData = getSortUrl('status', $sort, $queryString); ?>
+                        <a href="#"
+                           class="text-decoration-none text-dark"
+                           hx-get="/partials/tasks/team-tasks-table.php?<?= $sortData['url'] ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            Status <i class="bi <?= $sortData['icon'] ?> small"></i>
+                        </a>
+                    </th>
+                    <th style="width: 100px;">
+                        <?php $sortData = getSortUrl('priority', $sort, $queryString); ?>
+                        <a href="#"
+                           class="text-decoration-none text-dark"
+                           hx-get="/partials/tasks/team-tasks-table.php?<?= $sortData['url'] ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            Priority <i class="bi <?= $sortData['icon'] ?> small"></i>
+                        </a>
+                    </th>
+                    <th style="width: 150px;">Created By</th>
+                    <th style="width: 150px;">Assignee</th>
+                    <th style="width: 140px;">
+                        <?php $sortData = getSortUrl('due_date', $sort, $queryString); ?>
+                        <a href="#"
+                           class="text-decoration-none text-dark"
+                           hx-get="/partials/tasks/team-tasks-table.php?<?= $sortData['url'] ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            Due Date <i class="bi <?= $sortData['icon'] ?> small"></i>
+                        </a>
+                    </th>
+                    <th style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="team-tasks-table-body">
+                <?php foreach ($tasks as $task): ?>
+                    <?php
+                    $isOverdue = isOverdue($task['due_date'], $task['status']);
+                    $rowClass = $isOverdue ? 'table-danger' : '';
+                    $assigneeName = !empty($task['first_name']) && !empty($task['last_name'])
+                        ? htmlspecialchars($task['first_name'] . ' ' . $task['last_name'])
+                        : '<span class="text-muted">Unassigned</span>';
+                    ?>
+                    <tr class="<?= $rowClass ?>" id="team-task-row-<?= $task['id'] ?>">
+                        <!-- Priority Dot -->
+                        <td>
+                            <?= getPriorityDot($task['priority']) ?>
+                        </td>
+
+                        <!-- Title -->
+                        <td>
+                            <div class="fw-medium"><?= htmlspecialchars($task['title']) ?></div>
+                            <?php if (!empty($task['description'])): ?>
+                                <small class="text-muted">
+                                    <?= truncateText($task['description'], 60) ?>
+                                </small>
+                            <?php endif; ?>
+                            <?php if ($isOverdue): ?>
+                                <div>
+                                    <small class="text-danger">
+                                        <i class="feather-alert-triangle-fill me-1"></i>
+                                        <?= getFriendlyDueDate($task['due_date'], $task['status']) ?>
+                                    </small>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+
+                        <!-- Status -->
+                        <td>
+                            <?= getStatusBadge($task['status']) ?>
+                        </td>
+
+                        <!-- Priority -->
+                        <td>
+                            <?php
+                            $priorityColors = [
+                                'critical' => 'danger',
+                                'high' => 'warning',
+                                'medium' => 'info',
+                                'low' => 'success',
+                            ];
+                            $priorityColor = $priorityColors[$task['priority']] ?? 'secondary';
+                            ?>
+                            <span class="badge bg-<?= $priorityColor ?>">
+                                <?= ucfirst(htmlspecialchars($task['priority'])) ?>
+                            </span>
+                        </td>
+
+                        <!-- Created By -->
+                        <td>
+                            <?php if (!empty($task['creator_first_name']) && !empty($task['creator_last_name'])): ?>
+                                <?= htmlspecialchars($task['creator_first_name'] . ' ' . $task['creator_last_name']) ?>
+                            <?php else: ?>
+                                <span class="text-muted">Unknown</span>
+                            <?php endif; ?>
+                        </td>
+
+                        <!-- Assignee -->
+                        <td>
+                            <?= $assigneeName ?>
+                        </td>
+
+                        <!-- Due Date -->
+                        <td>
+                            <?php if (!empty($task['due_date'])): ?>
+                                <div><?= formatDate($task['due_date']) ?></div>
+                                <?php if (!$isOverdue && $task['status'] !== 'completed'): ?>
+                                    <small class="text-muted">
+                                        <?= getFriendlyDueDate($task['due_date'], $task['status']) ?>
+                                    </small>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span class="text-muted">No due date</span>
+                            <?php endif; ?>
+                        </td>
+
+                        <!-- Actions -->
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <?php if ($task['status'] !== 'completed'): ?>
+                                    <button type="button"
+                                            class="btn btn-outline-success"
+                                            title="Mark as Complete"
+                                            hx-post="/partials/tasks/complete.php?id=<?= $task['id'] ?>"
+                                            hx-target="#team-task-row-<?= $task['id'] ?>"
+                                            hx-swap="outerHTML">
+                                        <i class="feather-check-circle"></i>
+                                    </button>
+                                <?php endif; ?>
+                                <button type="button"
+                                        class="btn btn-outline-primary"
+                                        title="Edit Task"
+                                        id="btn-edit-team-task-<?= $task['id'] ?>"
+                                        hx-get="/partials/tasks/edit-task.php?id=<?= $task['id'] ?>"
+                                        hx-target="#page-content"
+                                        hx-swap="innerHTML">
+                                    <i class="feather-edit"></i>
+                                </button>
+                                <?php if ($task['status'] === 'completed'): ?>
+                                    <button type="button"
+                                            class="btn btn-outline-warning"
+                                            title="Archive Task"
+                                            hx-post="/partials/tasks/delete.php?id=<?= $task['id'] ?>&action=archive"
+                                            hx-confirm="Are you sure you want to archive this completed task?"
+                                            hx-target="#team-task-row-<?= $task['id'] ?>"
+                                            hx-swap="outerHTML">
+                                        <i class="feather-archive"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <button type="button"
+                                            class="btn btn-outline-danger"
+                                            title="Delete Task"
+                                            hx-delete="/partials/tasks/delete.php?id=<?= $task['id'] ?>&action=delete"
+                                            hx-confirm="Are you sure you want to delete this task?"
+                                            hx-target="#team-task-row-<?= $task['id'] ?>"
+                                            hx-swap="outerHTML">
+                                        <i class="feather-trash-2"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <?php if ($totalPages > 1): ?>
+        <nav aria-label="Team tasks pagination" id="team-tasks-pagination">
+            <ul class="pagination justify-content-center mb-0">
+                <!-- Previous Button -->
+                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link"
+                       href="#"
+                       <?php if ($page > 1): ?>
+                       hx-get="/partials/tasks/team-tasks-table.php?page=<?= $page - 1 ?><?= $queryString ?>"
+                       hx-target="#team-tasks-list-table"
+                       hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input"
+                       <?php endif; ?>>
+                        <i class="feather-chevron-left"></i> Previous
+                    </a>
+                </li>
+
+                <!-- Page Numbers -->
+                <?php
+                $startPage = max(1, $page - 2);
+                $endPage = min($totalPages, $page + 2);
+
+                if ($startPage > 1): ?>
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="#"
+                           hx-get="/partials/tasks/team-tasks-table.php?page=1<?= $queryString ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            1
+                        </a>
+                    </li>
+                    <?php if ($startPage > 2): ?>
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <?php endif; ?>
+                <?php endif; ?>
+
+                <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
+                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                        <a class="page-link"
+                           href="#"
+                           hx-get="/partials/tasks/team-tasks-table.php?page=<?= $i ?><?= $queryString ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            <?= $i ?>
+                        </a>
+                    </li>
+                <?php endfor; ?>
+
+                <?php if ($endPage < $totalPages): ?>
+                    <?php if ($endPage < $totalPages - 1): ?>
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <?php endif; ?>
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="#"
+                           hx-get="/partials/tasks/team-tasks-table.php?page=<?= $totalPages ?><?= $queryString ?>"
+                           hx-target="#team-tasks-list-table"
+                           hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input">
+                            <?= $totalPages ?>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <!-- Next Button -->
+                <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                    <a class="page-link"
+                       href="#"
+                       <?php if ($page < $totalPages): ?>
+                       hx-get="/partials/tasks/team-tasks-table.php?page=<?= $page + 1 ?><?= $queryString ?>"
+                       hx-target="#team-tasks-list-table"
+                       hx-include="#team-tasks-search-input, #team-tasks-filters select, #team-tasks-filters input"
+                       <?php endif; ?>>
+                        Next <i class="feather-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    <?php endif; ?>
+<?php endif; ?>
