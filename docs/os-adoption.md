@@ -162,3 +162,74 @@ The activity log shipped to MaluDB, the `mcp_*` views and the two MCP servers (r
 agents would use, the JSON-mode shim for the kernel's actions server, the keys moved to the kernel, an expert
 agent, the command bar through the chat endpoint. Named here so nobody builds substitutes; every endpoint is
 registered `agent_reachable: false` until then.
+
+## 4. What was built (2026-10-09)
+
+**A clean repository first (step 0).** `maludb/maludb-os-pro-appointments` starts at the source's commit 4dde841 with
+no history: the source's history and tree carried the database password, the Google client secret, two Retell keys, a
+test account's password and 3 MB of call logs. Every secret now comes from `config/app.php` (`app_config()`: the
+environment → `config/.env`, the file the kernel's installer writes → `config/local.php` for a standalone install;
+`config/local.example.php` documents the keys); `logs/` is ignored.
+
+**Security first (step 2)** — S1, S3–S13 of §1.6, one commit each (S3 with S6), proven by `tests/os-adoption/security.php`
+(38 checks). New settings: `EMAIL_WEBHOOK_SECRET` (the inbound-mail URL carries `?key=`), `DEMO_ENABLED`,
+`RETELL_DEFAULT_API_KEY`. S13 is this product's own: the SMS agent's context webhooks now need the business's
+`mcp_api_key` as their Bearer token. Found on the way and fixed: the AI SMS webhook never matched a business by its phone
+numbers (the column was not selected), and the to-do list, its REST sort and its MCP tool used MySQL's `FIELD()` and
+answered 500 on PostgreSQL.
+
+**The adapter (step 3)**, in the plugin's order:
+| Piece | Where |
+|---|---|
+| Link columns, sign-on tables, roles catalogue (re-runnable); the sidebar seed in PostgreSQL | `docs/sql/os_adoption.sql`, `docs/sql/nav_permissions.sql` — the second and third files every install loads; `db/001–004` for the installer |
+| Token verifiers, session list, linking, grants, sites → businesses, the feed, `kernel_call()` | `helpers/os.php` |
+| `/sso`, `/sso/logout` | `html/sso.php`, `html/sso/logout.php` (the vhost rewrites the paths) |
+| The guard | `requireAuth()` → `os_guard()`: listed session, linked active user, business still held |
+| Local sign-in closed | login, register, forgot/reset, Google, invitation (pages and partials), API password login → the launcher |
+| Read-only people and businesses | staff, platform users, businesses, the affiliate's client users: screens say "Managed in the operating system", handlers answer 403 with the sentence; the REST staff writes `MANAGED_BY_OS`; the prospect-to-business helper throws |
+| API keys | only for a linked user in a business the kernel still grants |
+| Directory sync | `scripts/os-directory-sync.php` (`--full`, `--from-file`), timer `deploy/pro_appointments-directory-sync.timer` |
+| Roles to the kernel | `app_roles` on the new kernel-only MCP server `html/api/mcp/kernel.php` (the kernel token, nothing else; 404 standalone); the kernel's own validator accepts the document |
+| The application switcher | `helpers/os_switcher.php`, `html/partials/shared/app-switcher.php` in the header (K31) |
+| Registration | `maludb-os.json`, `html/api/v1/health.php`, `deploy/` (vhost template, three timers: the sync, reminders, voice messages) |
+| Building without a kernel | `scripts/os-dev-handoff.php`, `scripts/os-dev-directory.json` |
+
+How the application's tables carry the kernel's model: `users` is the mirror (`os_member_id`); a grant is a
+`user_restaurants` row with `source = 'os'` and the highest application role of the grant; a site is a business
+(`restaurants.os_scope_id`, `location_type = 'professional'`), created with the settings a sign-up seeds, its name, time
+zone and address following the kernel's, closed (never deleted) when the site is removed; its professional profile is
+written by the first admin's Settings save. The kernel's super-admin signs on as the application's `super-admin`
+(`is_platform_admin` too) and reaches businesses only through the grants the kernel lists.
+
+**Proven (step 4)** on a scratch copy (`tests/os-adoption/`): with `OS_ENABLED` off, every security proof, and password
+sign-in, the shell and the professional dashboard exactly as before; with it on, `os-sign-on.php`'s 86 checks — every
+other way in goes to the launcher; replay, audience, expiry, wrong key and tampered claims refused; an existing user
+linked by email once and a second holder of the email refused; the chosen business opens, one not held is refused (a
+stray local membership row included); a Staff user sees what the product's guards allow (the dashboard, to-dos, the
+message logs; the calendar is `requireManager()`); read-only screens, handlers and REST; revocation and suspension end
+sessions and API keys; a new site becomes a seeded business, a removed one closes with its data; sign-out notices;
+`app_roles` for the kernel only; the switcher from a fixture; health. **The kernel's installer `plan` against this
+repository (step 5): 20 steps, no stop** (the four endpoints register once Apache serves the name, as always before apply).
+
+## 5. The owner's steps, and what the contract still owes
+
+**Still to decide** (taken as recommended in §2; say so and it changes): the scope kind, the key and label, the roles and
+rights, the super-admin mapping, a site's business without its profile, the clean history.
+
+**To install** (the owner's; `apply` is root):
+1. `sudo php bin/app_install.php apply /srv/apps/pro_appointments --by <email> --domain <domain> --scheme https` in the
+   kernel — **https**, because Twilio signs the https URL it calls and Retell is given `APP_URL` for its webhooks.
+2. DNS and the proxy entry for `appointments.<domain>`; in the kernel, add the sites on the application's Scopes tab and
+   grant people their roles per site (`admin`, `manager`, `user`). The first admin of each business opens Settings and saves
+   it: that writes the professional profile and the booking slug.
+3. Per business, in the application: its own Retell, Twilio, MailerSend and OpenAI keys (Settings → Integrations) and its
+   MCP key; the inbound-mail provider's URL with `?key=<EMAIL_WEBHOOK_SECRET>`; Twilio's webhook at
+   `<APP_URL>/api/sms/twilio_pro.php` (or `/api/sms/webhook.php` for the AI agent); the SMS agent's context webhooks with
+   the business's MCP key as their Bearer token.
+
+**Still owed to the contract** (named, not built): the activity log shipped to MaluDB (`activity_log` is written by
+direct inserts in many places; one funnel first); `mcp_*` views and the records and activity MCP servers (agents cannot
+reach the application yet — every endpoint is `agent_reachable: false`); the JSON-mode shim for the kernel's actions
+server and an action registry; the model and provider keys moved to the kernel (deferred by the owner); an expert agent
+and the command bar through the chat endpoint; forgot/reset password (broken before the adoption, closed under the OS
+anyway); the removal of the restaurant and affiliate code the README calls the next step.

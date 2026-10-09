@@ -5,16 +5,21 @@
 
 - [x] 0. A clean repository: `maludb/maludb-os-pro-appointments`, secrets out of the code (`config/app.php`), logs out
 - [x] 1. Survey and decisions → `docs/os-adoption.md`
-- [ ] 2. Security fixes S1, S3–S13 (S2 is already fixed), one commit each, proven by `tests/os-adoption/security-*.php`
-- [ ] 3. The adapter: `db/` + `docs/sql/os_adoption.sql`, `helpers/os.php`, `/sso`, `/sso/logout`, the guard,
+- [x] 2. Security fixes S1, S3–S13 (S2 is already fixed), one commit each, proven by `tests/os-adoption/security.php` (38 checks)
+- [x] 3. The adapter: `db/` + `docs/sql/os_adoption.sql`, `helpers/os.php`, `/sso`, `/sso/logout`, the guard,
       the local sign-in closed, the read-only people and business screens, the directory sync, `app_roles`
       on `/api/mcp/kernel.php`, the application switcher in the header, `maludb-os.json`, `/api/v1/health`, `deploy/`
-- [ ] 4. Proofs on a scratch copy (`tests/os-adoption/`): standalone unchanged, then every sign-on proof of adapter.md §9
-- [ ] 5. `bin/app_install.php plan` from the kernel reads the repository clean
-- [ ] 6. The record (`docs/os-adoption.md` §4–5), README, CLAUDE.md here; the kernel's README and CLAUDE.md
+- [x] 4. Proofs on a scratch copy (`tests/os-adoption/`): standalone unchanged, then every sign-on proof of adapter.md §9 (86 checks)
+- [x] 5. `bin/app_install.php plan` from the kernel reads the repository clean (20 steps, no stop)
+- [x] 6. The record (`docs/os-adoption.md` §4–5), README, CLAUDE.md here; the kernel's README and CLAUDE.md
 
 ## Review
-(written when the work is done)
+Done 2026-10-09 in one session, 22 commits: a clean repository, thirteen security fixes (S2 was already fixed), the
+adapter in three commits, the proofs (124 checks), four product bugs found by the proofs and fixed (the SMS webhook's
+phone match, three MySQL `FIELD()` sorts). The record is `docs/os-adoption.md` §4–5: what the owner must still
+decide (every decision was taken as recommended), the install steps, and what the contract still owes — activity
+memory, the MCP servers for agents, JSON mode, the keys to the kernel, an expert. Standalone behaviour is unchanged
+(the security fixes apart).
 
 ---
 

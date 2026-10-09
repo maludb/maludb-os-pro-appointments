@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## This repository (2026-10-09)
+
+Pro Appointments is ZozoCal-Professional adopted onto the MaluDB Business OS kernel (`maludb-os-core`, `/var/www`
+on the development host) with the `os-adopt` skill of the `maludb-os-integration` plugin. Read `docs/os-adoption.md`
+first: the survey, the decisions (every one taken as recommended, awaiting the owner), what was built, what is proven
+(`tests/os-adoption/`, on a scratch copy only — never on an installed copy), what the owner does to install
+(`maludb-os.json`, the kernel's `bin/app_install.php`) and what the contract still owes (activity memory, the agents'
+MCP servers, JSON mode, the keys to the kernel, an expert). Rules that outlive the adoption:
+- `OS_ENABLED` off = the standalone product, unchanged; on = the kernel is the only way in. Nothing of the adapter
+  runs with the flag off; nothing new may open a second way in with it on.
+- Nothing per server is a constant in code: `app_config()` (`config/app.php`) — the environment, `config/.env`
+  (the installer's), `config/local.php`. Never commit a key, a password or a log.
+- The kernel owns people and businesses: a screen or handler that creates, changes or deactivates a user, a
+  membership or a business shows `os_managed_notice()` / calls `os_refuse_if_managed()` under the flag.
+- A site of the kernel is a `restaurants` row with `location_type = 'professional'`; the professional profile is
+  the first admin's Settings save. Every business is professional; the restaurant and affiliate code is unreachable.
+- The schema is `docs/sql/pg_schema.sql` + `nav_permissions.sql` + `os_adoption.sql` (re-runnable), linked from
+  `db/` for the installer. MySQL syntax anywhere is a bug (`FIELD()`, `CURDATE()`, `DATE_SUB` were).
+
 ## Repository Overview
 
 1. Initial Analysis and Planning

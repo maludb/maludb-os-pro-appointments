@@ -1,81 +1,54 @@
-# ZozoCal-Professional
+# Pro Appointments — `maludb-os-pro-appointments`
 
-Appointment scheduling for anyone who offers professional services — consultants, coaches,
-therapists, stylists, tutors and similar single-provider businesses. The professional defines
-services, availability and time off; clients book, change and cancel appointments online, by SMS
-or by talking to an AI voice agent.
+Appointment scheduling for anyone who offers professional services — consultants, coaches, therapists, stylists,
+tutors and similar single-provider businesses — as an application of the **MaluDB Business OS**. The professional
+defines services, availability and time off; clients book, change and cancel appointments online, by SMS or by
+talking to an AI voice agent. The kernel signs people in, owns who they are and which businesses they hold, and
+turns each of its sites into a business here.
 
-## Why this repository exists
+This is ZozoCal-Professional (`maludb-ed/ZozoCal-Professional`, commit 4dde841) **adopted** onto the kernel with the
+`os-adopt` route of the `maludb-os-integration` plugin — the application keeps its code, schema and users table and
+gains the kernel's sign-on beside them, behind one flag, `OS_ENABLED`. With the flag off it is the standalone
+product. The repository starts with a clean history because the source's carried credentials. The whole record —
+survey, decisions, what was built, what was proven, what the owner still decides and what the contract still owes —
+is **`docs/os-adoption.md`**.
 
-ZozoCal began as a restaurant reservation system. It was later stretched into a generic scheduler
-for professional services, and then into an affiliate system, all inside one codebase switched by
-a `product_type` column. Those three products should not live together, so on 2026-09-21 the
-combined codebase was split into three repositories:
+## Installing beside the kernel
 
-| Repository | Product |
-|------------|---------|
-| [ZozoCal-Restaurant](https://github.com/maludb-ed/ZozoCal-Restaurant) | Restaurant reservation system |
-| **ZozoCal-Professional** (this one) | Appointment scheduling for professional services |
-| [ZozoCal-Affiliate](https://github.com/maludb-ed/ZozoCal-Affiliate) | Affiliate referral and prospect pipeline |
+The kernel's installer does everything from `maludb-os.json`:
 
-**Current state:** this repository is a full copy of the combined codebase, with its complete
-history. It still contains the restaurant and affiliate code. Removing that code is the next
-step, and it happens here, independently of the other two repositories.
+```
+sudo php /var/www/bin/app_install.php plan  /srv/apps/pro_appointments --domain <domain>
+sudo php /var/www/bin/app_install.php apply /srv/apps/pro_appointments --by <super-admin email> --domain <domain> --scheme https
+```
 
-## What belongs here
+Catalog key `pro_appointments`, served at `appointments.<domain>`, database `<tenant>_pro_appointments`, the sites on
+the application's Scopes tab, people granted per site as `admin`, `manager` or `user`. The owner's steps after apply
+are in `docs/os-adoption.md` §5.
 
-- Professional dashboard, services, availability rules, time off, appointments, calendar,
-  client directory, reports and settings — `html/partials/professional/`
-- Public client booking flow — `html/pro-booking/`
-- Slot engine, booking and notification logic — `helpers/professional-availability.php`,
-  `helpers/professional-booking.php`, `helpers/professional-notifications.php`,
-  `helpers/send-professional-reminders.php`
-- AI voice and SMS scheduling agents — `helpers/professional-voice-api.php`,
-  `html/api/mcp/pro-tools.php`, `html/api/retell/pro-webhook.php`, `html/api/sms/pro-webhook.php`
-- Tables: `professional_profiles`, `professional_services`, `professional_availability_rules`,
-  `professional_time_off`, `professional_clients`, `professional_appointments`
-  (`docs/sql/professional_scheduling.sql`)
-- Requirements — `requirements.md`
+## Standalone
 
-## What should be removed from this repository
+1. Create a PostgreSQL 17 database and load `docs/sql/pg_schema.sql`, `docs/sql/nav_permissions.sql`,
+   `docs/sql/os_adoption.sql` in that order (`docs/sql/README.md`).
+2. Copy `config/local.example.php` to `config/local.php` and fill it in (nothing per server is in the code).
+3. `composer install` (`vendor/` is not committed).
+4. Point Apache's document root at `html/`.
 
-- Restaurant reservations: `html/partials/reservations/`, `tables/`, `sections/`, `waitlist/`,
-  `guests/`, `html/booking/`, the restaurant voice/SMS/email agents, the restaurant-only tables,
-  and `restaurant-reservation-requirements.*`
-- Affiliate system: `html/partials/affiliate/`, `html/partials/platform/affiliate*.php`,
-  and the `affiliates`, `affiliate_*`, `prospects` and `prospect_*` tables
-- The `product_type` switching in `html/app.php` and `html/register.php`, once only the
-  `professional` mode remains
+## What is here
 
-## Known design debt
+- Professional dashboard, services, availability rules, time off, appointments, calendar, client directory, reports
+  and settings — `html/partials/professional/`; the public booking flow — `html/pro-booking/`
+- Slot engine, booking and notification logic — `helpers/professional-*.php`
+- AI voice and SMS scheduling agents — `helpers/professional-voice-api.php`, `html/api/mcp/pro.php`,
+  `html/api/retell/pro-webhook.php`, `html/api/sms/*`
+- The REST API — `html/api/v1/`; the kernel-only MCP endpoint — `html/api/mcp/kernel.php`
+- The OS adapter — `helpers/os.php`, `html/sso.php`, `html/sso/logout.php`, `scripts/os-directory-sync.php`,
+  `deploy/`, `maludb-os.json`; the proofs — `tests/os-adoption/`
+- Requirements — `requirements.md`; the technology — `tech-stack.md`
 
-The professional product was built on top of the restaurant tenant model to avoid a refactor:
-a professional business is a row in `restaurants`, linked to its users through
-`user_restaurants`. Now that this product has its own repository, that tenant model should be
-renamed to something neutral (for example `businesses`) as part of the cleanup.
-
-## Technology
-
-- PHP on Apache (traditional LAMP layout — `html/` is the web root, everything above it is private)
-- PostgreSQL 17 — full schema in `docs/sql/pg_schema.sql`
-- HTMX partials under `html/partials/`, Bootstrap 5 (Kobie theme)
-- Retell AI for voice agents; SMS agent backed by OpenAI
-
-See `tech-stack.md` for the details.
-
-## Setup
-
-1. Create a PostgreSQL database and load `docs/sql/pg_schema.sql`.
-2. Set the connection details in `config/database.php`.
-3. Run `composer install` (`vendor/` is not committed).
-4. Point the Apache document root at `html/`.
-
-## Security note
-
-This repository is private because its history contains credentials (database password, Google
-OAuth client secret, Retell API key, tokens in `logs/`). Move them to environment variables,
-rotate them, and clean the history before this repository is ever made public.
+The restaurant and affiliate code of the combined ZozoCal codebase is still in the tree, unreachable (every business
+is `professional`); removing it is a separate clean-up, as is renaming the `restaurants` tenant table.
 
 ## License
 
-Apache License 2.0 — see `LICENSE`.
+See `LICENSE`.

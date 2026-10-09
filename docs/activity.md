@@ -3242,3 +3242,16 @@ Create a new github repository https://github.com/maludb-os-pro-appointments wit
   `pro_appointments`, label `appointments`, roles admin/manager/user, `app_roles` on a new kernel-only MCP
   endpoint, the kernel's super-admin as the platform admin, a site's business created by the sync without its
   profile. The plan is at the top of `tasks/todo.md`.
+
+## 2026-10-09 — The adoption built and proven
+
+- Security fixes S1, S3–S13, one commit each (`docs/os-adoption.md` §1.6); found and fixed on the way: the AI SMS
+  webhook's phone-number match, and MySQL `FIELD()` sorts in the to-do list, its REST sort and its MCP tool.
+- The adapter in three commits: `docs/sql/os_adoption.sql` + `db/` + the sidebar seed converted to PostgreSQL;
+  `helpers/os.php`, `/sso`, `/sso/logout`, the guard, local sign-in closed, the people and business screens read-only,
+  the directory sync, `app_roles` on `/api/mcp/kernel.php`, health; the application switcher, `maludb-os.json`,
+  `deploy/`.
+- Proven on a scratch copy (`tests/os-adoption/`: 38 + 86 checks); the kernel installer's `plan` reads the repository
+  clean (20 steps). The rights catalogue was corrected to what the guards allow (a Staff user sees the dashboard,
+  to-dos and the message logs; the calendar is manager+).
+- Record: `docs/os-adoption.md` §4–5; the plan's review in `tasks/todo.md`.
