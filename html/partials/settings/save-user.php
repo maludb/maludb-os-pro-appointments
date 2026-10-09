@@ -2,6 +2,7 @@
 require_once '../../../helpers/auth.php';
 require_once '../../../helpers/csrf.php';
 require_once '../../../helpers/validation.php';
+require_once '../../../helpers/invitations.php';
 
 requireAuth();
 requireAdmin();
@@ -63,6 +64,7 @@ if ($password !== '') {
 }
 
 $pdo = db();
+$inviteCode = null;
 
 try {
     $pdo->beginTransaction();
@@ -102,6 +104,13 @@ try {
         $stmt = $pdo->prepare("UPDATE user_restaurants SET role = ? WHERE user_id = ? AND restaurant_id = ?");
         $stmt->execute([$role, $userId, $restaurantId]);
 
+        // Editing a pending invitation without a password issues a new code
+        if ($password === '') {
+            $stmt = $pdo->prepare("SELECT password_hash = '!INVITED' FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            if ($stmt->fetchColumn()) $inviteCode = issue_invite_code($pdo, $userId);
+        }
+
     } else {
         // Check if user email already exists
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -131,6 +140,7 @@ try {
             );
             $stmt->execute([$firstName, $lastName, $email, $phone ?: null, $hashValue]);
             $userId = $pdo->lastInsertId();
+            if ($hashValue === '!INVITED') $inviteCode = issue_invite_code($pdo, (int)$userId);
         }
 
         // Create user_restaurants entry
@@ -145,6 +155,16 @@ try {
 
     // Trigger a refresh of the user list (must be before output)
     header('HX-Trigger: refreshUserList');
+
+    // A new invitation: show its one-time code and keep the form open so the admin can copy it
+    if ($inviteCode !== null) {
+        echo '<div class="alert alert-info" id="save-user-invite-code">
+                <i class="feather-mail me-1"></i> Invitation created. Give ' . htmlspecialchars($email) . ' this code, with a link to
+                <strong>/register.php?invite</strong>. It is shown only once and is valid for 14 days:
+                <div class="fs-4 fw-bold font-monospace mt-2" id="save-user-invite-code-value">' . htmlspecialchars($inviteCode) . '</div>
+              </div>';
+        exit;
+    }
 
     echo '<div class="alert alert-success alert-dismissible fade show" id="save-user-success">
             <i class="feather-check-circle me-1"></i> Staff member ' . ($isEdit ? 'updated' : 'added') . ' successfully.

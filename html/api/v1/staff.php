@@ -8,12 +8,15 @@
  *                                    belong to this business only)
  *
  * The API never sets passwords. A new person is created as an invitation and sets their own
- * password with "Accept Invitation" on the registration page, as with the web Add Staff form.
+ * password with "Accept Invitation" on the registration page, as with the web Add Staff form —
+ * with the one-time invite_code the POST answers (once; valid 14 days). PUT {"reissue_invitation": true}
+ * issues a new code for a still-pending invitation.
  * Mirrors html/partials/settings/save-user.php and toggle-user.php.
  */
 
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/../../../helpers/validation.php';
+require_once __DIR__ . '/../../../helpers/invitations.php';
 
 $auth   = api_authenticate();
 $rid    = $auth['restaurant_id'];
@@ -80,13 +83,16 @@ function handleAddStaff(int $rid): void {
         );
         $stmt->execute([$firstName, $lastName, $email, $phone ?: null]);
         $userId = $stmt->fetchColumn();
+        $inviteCode = issue_invite_code($pdo, (int)$userId);
     }
 
     $pdo->prepare("INSERT INTO user_restaurants (user_id, restaurant_id, role, is_active) VALUES (?, ?, ?, 1)")
         ->execute([$userId, $rid, $role]);
     $pdo->commit();
 
-    api_success(['staff' => loadStaff($rid, (int)$userId)], 201);
+    $answer = ['staff' => loadStaff($rid, (int)$userId)];
+    if (!empty($inviteCode)) $answer['invite_code'] = $inviteCode;
+    api_success($answer, 201);
 }
 
 function handleUpdateStaff(int $rid, int $userId, int $selfId): void {
@@ -131,7 +137,11 @@ function handleUpdateStaff(int $rid, int $userId, int $selfId): void {
             ->execute([$firstName, $lastName, trim((string)($profileFields['phone'] ?? $member['phone'])) ?: null, $userId]);
     }
 
-    api_success(['staff' => loadStaff($rid, $userId)]);
+    $answer = ['staff' => loadStaff($rid, $userId)];
+    if (!empty($in['reissue_invitation']) && $answer['staff']['invitation_pending']) {
+        $answer['invite_code'] = issue_invite_code($pdo, $userId);
+    }
+    api_success($answer);
 }
 
 function loadStaff(int $rid, int $userId): ?array {
