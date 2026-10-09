@@ -43,8 +43,10 @@ function page_csrf(string $j): string { preg_match('/name="csrf-token" content="
 function set_os(bool $on): void {
     $p = dirname(__DIR__, 2) . '/config/local.php';
     $s = file_get_contents($p);
-    $s = preg_replace("/'OS_ENABLED'=>'[01]'/", "'OS_ENABLED'=>'" . ($on ? '1' : '0') . "'", $s);
-    file_put_contents($p, $s);
+    $new = preg_replace("/'OS_ENABLED'=>'[01]'/", "'OS_ENABLED'=>'" . ($on ? '1' : '0') . "'", $s);
+    if ($new === $s) return;
+    file_put_contents($p, $new);
+    sleep(3);   // php -S keeps opcache for the CLI on this host: the old file is served for opcache.revalidate_freq seconds
 }
 function devkey(): string { return (require dirname(__DIR__, 2) . '/config/local.php')['ACTION_TOKEN_KEY']; }
 function mint_handoff(int $member, array $claims, ?int $scope = null, string $app = APP, int $ttl = 60, ?string $key = null): string {

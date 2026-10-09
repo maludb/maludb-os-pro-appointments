@@ -72,7 +72,7 @@ $r = req('POST', '/partials/auth/switch-restaurant.php', ['jar' => $jp, 'form' =
 ok($r['code'] === 403, 'even with a local membership row at Downtown: 403 (only the kernel\'s grants count)');
 $pdo->prepare("DELETE FROM user_restaurants WHERE user_id = ? AND restaurant_id = ? AND source = 'local'")->execute([$pu, $down]);
 ok(req('GET', '/partials/settings/users.php', ['jar' => $jp])['code'] === 403, 'Staff role: the admin-only staff screen answers 403');
-ok(req('GET', '/partials/professional/services.php', ['jar' => $jp])['code'] === 200, 'Staff role: the services screen opens');
+ok(req('GET', '/partials/professional/dashboard.php', ['jar' => $jp])['code'] === 200 && req('GET', '/partials/todos/list.php', ['jar' => $jp])['code'] === 200 && req('GET', '/partials/professional/calendar.php?view=week', ['jar' => $jp])['code'] === 403, 'Staff role: the dashboard and to-dos open; the calendar (manager+) answers 403, as the product always did');
 $jm = jar();
 req('GET', mint_handoff(27, $fx['claims']['27'], 101), ['jar' => $jm]);
 $app = req('GET', '/app.php', ['jar' => $jm]);
@@ -155,7 +155,7 @@ $r = json_decode($mcp($kt, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/ca
 $doc = $r['result']['structuredContent'] ?? [];
 ok(($doc['schema'] ?? '') === 'os.app-roles/1' && array_column($doc['roles'], 'key') === ['admin', 'manager', 'user'], 'app_roles: os.app-roles/1 with admin, manager, user');
 ok(array_column($doc['roles'], 'capability') === ['admin', 'write', 'write'] && array_column($doc['roles'], 'is_admin') === [true, false, false], 'capabilities admin/write/write, admin the one is_admin');
-ok(array_column($doc['rights'], 'key') === ['appointments.work', 'business.setup', 'business.admin'], 'the three rights');
+ok(array_column($doc['rights'], 'key') === ['desk.view', 'appointments.manage', 'business.admin'] && array_column($doc['roles'], 'rights') === [['desk.view', 'appointments.manage', 'business.admin'], ['desk.view', 'appointments.manage'], ['desk.view']], 'the three rights, each role\'s set as its guards allow');
 $r = json_decode($mcp($kt, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => ['name' => 'list_services', 'arguments' => []]])['body'], true);
 ok(isset($r['error']), 'any other tool: refused');
 ok($mcp(kernel_token('hr'), ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'initialize'])['code'] === 401, "a kernel token for another application: 401");
