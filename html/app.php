@@ -666,6 +666,9 @@ $permittedNavItems = getPermittedNavItems($userPlatformRole, $currentRole, $curr
                     </div>
                   </div>
 
+                  <!-- The operating system's application switcher (renders nothing standalone) -->
+                  <?php include __DIR__ . '/partials/shared/app-switcher.php'; ?>
+
                   <!-- Restaurant switcher (if user has multiple restaurants) -->
                   <?php if ($hasMultipleRestaurants): ?>
                   <div class="dropdown me-3" id="restaurant-switcher">
