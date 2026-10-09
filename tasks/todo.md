@@ -14,7 +14,7 @@
 - [x] 6. The record (`docs/os-adoption.md` §4–5), README, CLAUDE.md here; the kernel's README and CLAUDE.md
 
 ## Review
-Done 2026-10-09 in one session, 22 commits: a clean repository, thirteen security fixes (S2 was already fixed), the
+Done 2026-10-09 in one session, 22 commits (this one included): a clean repository, thirteen security fixes (S2 was already fixed), the
 adapter in three commits, the proofs (124 checks), four product bugs found by the proofs and fixed (the SMS webhook's
 phone match, three MySQL `FIELD()` sorts). The record is `docs/os-adoption.md` §4–5: what the owner must still
 decide (every decision was taken as recommended), the install steps, and what the contract still owes — activity
