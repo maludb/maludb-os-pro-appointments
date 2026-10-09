@@ -58,7 +58,7 @@ $phoneNumberId = null;
 // 1. Check restaurant_phone_numbers table first
 $toDigits = normalizePhone($toNumber);
 $rpnStmt = $pdo->prepare(
-    "SELECT rpn.id as phone_number_id, rpn.restaurant_id, r.location_type, r.name as restaurant_name
+    "SELECT rpn.id as phone_number_id, rpn.restaurant_id, rpn.phone_number, r.location_type, r.name as restaurant_name
      FROM restaurant_phone_numbers rpn
      JOIN restaurants r ON rpn.restaurant_id = r.id
      WHERE rpn.is_active = 1
