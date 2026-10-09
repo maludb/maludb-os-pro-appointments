@@ -46,7 +46,7 @@ $fromNumber = $call['from_number'] ?? '';
 $toNumber   = $call['to_number'] ?? '';
 $callId     = $call['call_id'] ?? '';
 
-wlog("PARSED — call_id: {$callId}, from_number: {$fromNumber}, to_number: {$toNumber}");
+wlog("PARSED — call_id: {$callId}, to_number: {$toNumber}");
 
 if ($toNumber === '') {
     $toNumber = '+18473930142';
@@ -144,7 +144,6 @@ if ($event === 'call_inbound' || $event === 'call_started') {
         $fromDigits = normalizePhone($fromNumber);
         $from10 = strlen($fromDigits) > 10 ? substr($fromDigits, -10) : $fromDigits;
         $fromE164 = '+1' . $from10;
-        wlog("CLIENT LOOKUP — raw from_number: {$fromNumber}, digits: {$fromDigits}, 10-digit: {$from10}, E.164: {$fromE164}");
         wlog("CLIENT LOOKUP — searching restaurant_id: {$restaurantId}");
 
         $stmt = $pdo->prepare(
@@ -161,7 +160,6 @@ if ($event === 'call_inbound' || $event === 'call_started') {
             $dbDigits = normalizePhone($c['phone']);
             $db10 = strlen($dbDigits) > 10 ? substr($dbDigits, -10) : $dbDigits;
             $dbE164 = '+1' . $db10;
-            wlog("CLIENT LOOKUP — [{$idx}] id: {$c['id']}, name: {$c['first_name']} {$c['last_name']}, db_phone: {$c['phone']}, normalized: {$dbE164}, match: " . ($fromE164 === $dbE164 ? 'YES' : 'NO'));
         }
 
         $matchedClient = null;
@@ -171,13 +169,13 @@ if ($event === 'call_inbound' || $event === 'call_started') {
             $cE164 = '+1' . $c10;
             if ($fromE164 === $cE164) {
                 $matchedClient = $c;
-                wlog("CLIENT MATCHED — id: {$c['id']}, name: {$c['first_name']} {$c['last_name']}, phone: {$c['phone']} (normalized: {$cE164})");
+                wlog("CLIENT MATCHED — id: {$c['id']}");
                 break;
             }
         }
 
         if (!$matchedClient) {
-            wlog("CLIENT NOT MATCHED — no client matched for from_number {$fromNumber} (E.164: {$fromE164}) in restaurant_id {$restaurantId}");
+            wlog("CLIENT NOT MATCHED in restaurant_id {$restaurantId}");
             $vars['client_phone'] = $fromE164;
         }
 
@@ -326,7 +324,7 @@ if ($event === 'call_inbound' || $event === 'call_started') {
         ],
     ];
 
-    wlog("DYNAMIC VARIABLES: " . json_encode($vars, JSON_PRETTY_PRINT));
+    wlog("DYNAMIC VARIABLES: " . implode(', ', array_keys($vars)));
     wlog("=== END ===\n");
 
     echo json_encode($response);
@@ -349,7 +347,7 @@ if ($event === 'call_ended') {
     $startTimestamp      = $call['start_timestamp'] ?? null;
     $endTimestamp        = $call['end_timestamp'] ?? null;
 
-    wlog("duration_ms: {$durationMs}, status: {$status}, recording: " . ($recordingUrl ?: '(none)'));
+    wlog("duration_ms: {$durationMs}, status: {$status}, recording: " . ($recordingUrl ? 'yes' : 'none'));
 
     $pdo = db();
 

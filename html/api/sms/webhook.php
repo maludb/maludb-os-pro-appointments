@@ -40,8 +40,7 @@ $toNumber   = $_POST['To'] ?? '';
 $body       = trim($_POST['Body'] ?? '');
 $messageSid = $_POST['MessageSid'] ?? '';
 
-webhookLog("FROM: {$fromNumber} | TO: {$toNumber} | SID: {$messageSid}");
-webhookLog("BODY: {$body}");
+webhookLog("TO: {$toNumber} | SID: {$messageSid} | " . strlen($body) . " characters");
 
 if ($fromNumber === '' || $toNumber === '' || $body === '') {
     webhookLog("ERROR: Missing required fields");
@@ -150,7 +149,7 @@ foreach ($clients as $cl) {
 }
 
 if (!$clientId) {
-    webhookLog("CLIENT: No matching professional_client found for {$fromNumber}");
+    webhookLog("CLIENT: No matching professional_client found");
 }
 
 // --- Log inbound message to sms_message_log ---
@@ -172,7 +171,7 @@ if ($response === '') {
 }
 
 // --- Send reply via Twilio ---
-webhookLog("SENDING REPLY: " . mb_substr($response, 0, 200));
+webhookLog("SENDING REPLY: " . strlen($response) . " characters");
 
 $sendResult = twilioSend($restaurantId, $fromNumber, $response);
 

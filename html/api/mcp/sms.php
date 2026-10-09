@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 verifySmsAuth();
 
 $rawBody = file_get_contents('php://input');
-mcpSmsLog("RAW BODY: " . ($rawBody ?: '(empty)'));
+mcpSmsLog("BODY: " . strlen((string)$rawBody) . " bytes");
 
 $request = json_decode($rawBody, true);
 

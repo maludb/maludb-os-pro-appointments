@@ -32,8 +32,7 @@ $toNumber   = $_POST['To'] ?? '';
 $body       = trim($_POST['Body'] ?? '');
 $messageSid = $_POST['MessageSid'] ?? '';
 
-proLog("FROM: {$fromNumber} | TO: {$toNumber} | SID: {$messageSid}");
-proLog("BODY: {$body}");
+proLog("TO: {$toNumber} | SID: {$messageSid} | " . strlen($body) . " characters");
 
 if ($fromNumber === '' || $toNumber === '' || $body === '') {
     proLog("ERROR: Missing required fields");
@@ -119,7 +118,7 @@ if (!$clientId) {
 }
 
 if (!$clientId && !$prospectId) {
-    proLog("SENDER: No matching professional_client or prospect for {$fromNumber}");
+    proLog("SENDER: No matching professional_client or prospect");
 }
 
 // --- Store inbound message ---

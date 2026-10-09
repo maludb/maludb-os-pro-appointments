@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 verifyMcpProAuth();
 
 $rawBody = file_get_contents('php://input');
-mcpProLog("RAW BODY: " . ($rawBody ?: '(empty)'));
+mcpProLog("BODY: " . strlen((string)$rawBody) . " bytes");
 
 $request = json_decode($rawBody, true);
 

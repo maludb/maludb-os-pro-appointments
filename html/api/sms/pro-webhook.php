@@ -25,7 +25,7 @@ function wlog(string $msg) {
 $toNumber   = trim($_POST['to_number'] ?? $_GET['to_number'] ?? '');
 $fromNumber = trim($_POST['from_number'] ?? $_GET['from_number'] ?? '');
 
-wlog("=== SMS CONTEXT REQUEST === to: {$toNumber} | from: {$fromNumber}");
+wlog("=== SMS CONTEXT REQUEST === to: {$toNumber}");
 
 if ($toNumber === '' || $fromNumber === '') {
     wlog("ERROR: Missing to_number or from_number");
@@ -127,7 +127,7 @@ foreach ($clientStmt->fetchAll() as $cl) {
             'preferred_contact_method' => $cl['preferred_contact_method'] ?? '',
             'last_appointment_at'      => $cl['last_appointment_at'] ?? '',
         ];
-        wlog("CLIENT MATCHED: id={$client['id']}, name={$client['name']}");
+        wlog("CLIENT MATCHED: id={$client['id']}");
 
         // --- Next upcoming appointment ---
         $apptStmt = $pdo->prepare(
@@ -159,7 +159,7 @@ foreach ($clientStmt->fetchAll() as $cl) {
 }
 
 if (!$client) {
-    wlog("CLIENT: No matching professional_client for {$fromNumber}");
+    wlog("CLIENT: No matching professional_client");
 }
 
 // --- Fetch SMS conversation history for this from/to pair ---

@@ -32,8 +32,7 @@ $message    = trim($payload['message'] ?? '');
 $agentId    = trim($payload['agent_id'] ?? '');
 
 wlog("=== TEXT AGENT REQUEST ===");
-wlog("FROM: {$fromNumber} | TO: {$toNumber} | AGENT_ID: {$agentId}");
-wlog("MESSAGE: {$message}");
+wlog("TO: {$toNumber} | AGENT_ID: {$agentId} | " . strlen($message) . " characters");
 
 if ($toNumber === '' || $fromNumber === '') {
     wlog("ERROR: Missing to_number or from_number");
@@ -140,7 +139,7 @@ foreach ($clientStmt->fetchAll() as $cl) {
             'preferred_contact_method' => $cl['preferred_contact_method'] ?? '',
             'last_appointment_at'      => $cl['last_appointment_at'] ?? '',
         ];
-        wlog("CLIENT MATCHED: id={$client['id']}, name={$client['name']}");
+        wlog("CLIENT MATCHED: id={$client['id']}");
 
         // --- Next upcoming appointment ---
         $apptStmt = $pdo->prepare(
@@ -172,7 +171,7 @@ foreach ($clientStmt->fetchAll() as $cl) {
 }
 
 if (!$client) {
-    wlog("CLIENT: No matching professional_client for {$fromNumber}");
+    wlog("CLIENT: No matching professional_client");
 }
 
 // --- Fetch SMS conversation history ---
