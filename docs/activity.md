@@ -3226,3 +3226,19 @@ and Google sign-in. The database password remains committed in `config/database.
 - Found: every authenticated REST call returns 401 because PHP runs as an Apache module and the `Bearer` header never reaches `$_SERVER['HTTP_AUTHORIZATION']`. `mcp/pro.php` and `mcp/sms.php` accept unauthenticated requests because no `mcp_api_key` is set, and the SMS todo tools resolve a business from a caller phone number. The MCP key lookup is not per business.
 - Created and then deleted one test API token while surveying.
 - Wrote the plan at the top of `tasks/todo.md`. Awaiting approval.
+
+## 2026-10-09 — Adoption into the MaluDB Business OS begins
+
+**Prompt:** "In this conversation we want to convert https://github.com/maludb-ed/ZozoCal-Professional.git to a
+maludb-os application called maludb-os-pro-appointments use the plugins we normally use to do the conversion.
+Create a new github repository https://github.com/maludb-os-pro-appointments with your results. Please begin the process."
+- Created `maludb/maludb-os-pro-appointments` (private) with a fresh history from the source at 4dde841: the
+  source's history and tree carried credentials (database password, Google client secret, two Retell keys, a test
+  account's password, call logs). Every secret now comes from `config/app.php` (`app_config()`: environment →
+  `config/.env` → `config/local.php`); `config/local.example.php` documents the keys.
+- Surveyed the application for the `os-adopt` skill (`docs/os-adoption.md` §1): stack, every way into a session,
+  people and tenants, machine access, the keys it holds, thirteen security gaps (S2 was already fixed here).
+- Proposed the decisions (§2) with recommendations and took them provisionally: scope `location`, key
+  `pro_appointments`, label `appointments`, roles admin/manager/user, `app_roles` on a new kernel-only MCP
+  endpoint, the kernel's super-admin as the platform admin, a site's business created by the sync without its
+  profile. The plan is at the top of `tasks/todo.md`.

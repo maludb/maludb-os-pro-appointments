@@ -1,3 +1,23 @@
+# Plan: adopt ZozoCal-Professional into the MaluDB Business OS (2026-10-09)
+
+**Status:** in progress — the owner asked for the conversion to begin; decisions proposed in
+`docs/os-adoption.md` §2 are taken as recommended and flagged there.
+
+- [x] 0. A clean repository: `maludb/maludb-os-pro-appointments`, secrets out of the code (`config/app.php`), logs out
+- [x] 1. Survey and decisions → `docs/os-adoption.md`
+- [ ] 2. Security fixes S1, S3–S13 (S2 is already fixed), one commit each, proven by `tests/os-adoption/security-*.php`
+- [ ] 3. The adapter: `db/` + `docs/sql/os_adoption.sql`, `helpers/os.php`, `/sso`, `/sso/logout`, the guard,
+      the local sign-in closed, the read-only people and business screens, the directory sync, `app_roles`
+      on `/api/mcp/kernel.php`, the application switcher in the header, `maludb-os.json`, `/api/v1/health`, `deploy/`
+- [ ] 4. Proofs on a scratch copy (`tests/os-adoption/`): standalone unchanged, then every sign-on proof of adapter.md §9
+- [ ] 5. `bin/app_install.php plan` from the kernel reads the repository clean
+- [ ] 6. The record (`docs/os-adoption.md` §4–5), README, CLAUDE.md here; the kernel's README and CLAUDE.md
+
+## Review
+(written when the work is done)
+
+---
+
 # Plan: API and MCP coverage so AI agents can manage the application
 
 **Status:** awaiting your approval — nothing changed yet.
